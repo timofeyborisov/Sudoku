@@ -8,6 +8,8 @@ module Types
   , SolverStrategy(..)
   , LoadedPuzzle(..)
   , GameState(..)
+  , UIState(..)
+  , World(..)
   ) where
 
 import Data.Vector (Vector)

@@ -83,3 +83,7 @@ executable Sudoku
         Types
         Board
         Levels
+        Solver
+        Config
+        UI
+        Events
