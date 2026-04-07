@@ -1,25 +1,28 @@
 module Types
-  ( Digit
-  , Cell
-  , Board
-  , Difficulty (..)
-  , MoveValidity (..)
-  , LineKind (..)
-  , SolverStrategy (..)
-  , LoadedPuzzle (..)
-  , GameState (..)
+  ( Digit(..)
+  , Cell(..)
+  , Board(..)
+  , Difficulty(..)
+  , MoveValidity(..)
+  , LineKind(..)
+  , SolverStrategy(..)
+  , LoadedPuzzle(..)
+  , GameState(..)
   ) where
 
 import Data.Vector (Vector)
 
 -- 1..9
-type Digit = Int
+newtype Digit = Digit Int
+  deriving (Eq, Ord, Show, Read)
 
 -- 0..80
-type Cell = Int
+newtype Cell = Cell Int
+  deriving (Eq, Ord, Show, Read)
 
 -- 9x9
-type Board = Vector Int
+newtype Board = Board (Vector Int)
+  deriving (Eq, Show, Read)
 
 data Difficulty
   = Easy
@@ -41,7 +44,7 @@ data MoveValidity
 data LineKind
   = Row Int
   | Col Int
-  | Box Int -- Block
+  | Box Int -- 3x3 
   deriving (Eq, Show)
 
 data SolverStrategy
@@ -60,4 +63,17 @@ data GameState = GameState
   { gsInitial :: Board
   , gsCurrent :: Board
   , gsGivens :: Vector Bool
+  } deriving (Eq, Show)
+
+data UIState = UIState
+  { uiSelected :: Maybe Cell
+  , uiHover :: Maybe Cell
+  , uiShowHints :: Bool
+  , uiShowConflicts :: Bool
+  , uiMessage :: Maybe String
+  } deriving (Eq, Show)
+
+data World = World
+  { worldGame :: GameState
+  , worldUI :: UIState
   } deriving (Eq, Show)

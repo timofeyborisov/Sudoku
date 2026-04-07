@@ -25,9 +25,6 @@ module Board
   -- Game
   , applyMove
   , gameFromLoaded
-  -- Solvers
-  , solveStep
-  , solveFull
   ) where
 
 import Data.Set (Set)
@@ -116,10 +113,3 @@ applyMove = undefined
 gameFromLoaded :: LoadedPuzzle -> GameState
 gameFromLoaded = undefined
 
-
--- Solve 
-solveStep :: Board -> Maybe (SolverStrategy, Cell, Digit)
-solveStep = undefined
-
-solveFull :: Board -> Maybe Board
-solveFull = undefined

@@ -33,7 +33,7 @@ minBundledPuzzleCount = 5
 loadPuzzleFromFile :: FilePath -> IO (Either String LoadedPuzzle)
 loadPuzzleFromFile = undefined
 
--- Parsing one line (without internal hyphens) or normalized text of 81 characters.
+-- Parse normalized puzzle text of length 81.
 parsePuzzleString :: String -> Either String LoadedPuzzle
 parsePuzzleString = undefined
 
@@ -49,6 +49,6 @@ pickRandomPuzzlePath paths g =
 loadRandomPuzzle :: Difficulty -> StdGen -> IO (Either String LoadedPuzzle)
 loadRandomPuzzle = undefined
 
--- Explicit selection by index in the list of complexity files (for menus)
+-- Load a puzzle by its index in the list for the given difficulty.
 loadPuzzleByDifficulty :: Difficulty -> Int -> IO (Either String LoadedPuzzle)
 loadPuzzleByDifficulty = undefined
