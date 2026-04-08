@@ -9,6 +9,8 @@ module Config
   , thickGridColor
   , selectionColor
   , conflictColor
+  , solvedHighlightColor
+  , errorHighlightColor
   , givenDigitColor
   , userDigitColor
   , statusColor
@@ -45,6 +47,12 @@ selectionColor = makeColorI 210 225 255 255
 
 conflictColor :: Color
 conflictColor = makeColorI 255 210 210 255
+
+solvedHighlightColor :: Color
+solvedHighlightColor = makeColorI 190 235 190 255
+
+errorHighlightColor :: Color
+errorHighlightColor = makeColor 1 0.7 0.7 1
 
 givenDigitColor :: Color
 givenDigitColor = greyN 0.15

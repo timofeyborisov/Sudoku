@@ -68,11 +68,15 @@ data GameState = GameState
   } deriving (Eq, Show)
 
 data UIState = UIState
-  { uiSelected :: Maybe Cell
+  { uiSolved :: Bool
+  , uiSelected :: Maybe Cell
   , uiHover :: Maybe Cell
   , uiShowHints :: Bool
   , uiShowConflicts :: Bool
   , uiMessage :: Maybe String
+  , uiErrorCell :: Maybe Cell
+  , uiErrorAlpha :: Float
+  , uiSolvedAlpha :: Float
   } deriving (Eq, Show)
 
 data World = World

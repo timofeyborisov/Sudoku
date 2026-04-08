@@ -7,14 +7,33 @@ import Types
 import UI
 import Events
 import Config
+import Levels
+import Board
 
 main :: IO ()
-main =
+main = do
+  puzzle <- loadPuzzleFromFile "levels/Easy.txt" 
+
+  let world =
+        case puzzle of
+          Left err ->
+            initialWorld
+              { worldUI =
+                  (worldUI initialWorld)
+                    { uiMessage = Just ("Load error: " ++ err) }
+              }
+
+          Right loaded ->
+            World
+              { worldGame = gameFromLoaded loaded
+              , worldUI   = initialUIState
+              }
+  
   play
     window
     backgroundColor
     fps
-    initialWorld
+    world
     renderWorld
     handleEvent
     updateWorld
@@ -44,12 +63,13 @@ initialGameState =
 initialUIState :: UIState
 initialUIState =
   UIState
-    { uiSelected      = Nothing
-    , uiHover         = Nothing
-    , uiShowHints     = False
+    { uiSolved = False
+    , uiSelected = Nothing
+    , uiHover = Nothing
+    , uiShowHints = False
     , uiShowConflicts = True
-    , uiMessage       = Just "Sudoku"
+    , uiMessage = Just "Sudoku"
+    , uiErrorCell = Nothing
+    , uiErrorAlpha = 0.0
+    , uiSolvedAlpha = 0.0
     }
-
-emptyBoard :: Board
-emptyBoard = Board (V.replicate 81 0)

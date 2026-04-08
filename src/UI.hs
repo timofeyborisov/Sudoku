@@ -9,6 +9,7 @@ module UI
   , cellCenter
   , cellRect
   , pointToCell
+  , withAlpha
   ) where
 
 import Graphics.Gloss
@@ -21,8 +22,6 @@ import Board
 import Config
 
 -- Geometry
-
-
 boardSize :: Float
 boardSize = 9 * cellSize
 
@@ -42,12 +41,13 @@ thickLineWidth :: Float
 thickLineWidth = 3
 
 -- Main render
-
 renderWorld :: World -> Picture
 renderWorld world =
   Pictures
     [ drawBackground
     , drawSelection world
+    , drawErrorCell world
+    , drawSolvedOverlay world
     , drawConflicts world
     , drawGrid
     , drawBoard world
@@ -55,14 +55,12 @@ renderWorld world =
     ]
 
 -- Background
-
 drawBackground :: Picture
 drawBackground =
   Color backgroundColor $
     rectangleSolid (fromIntegral windowWidth) (fromIntegral windowHeight)
 
 -- Grid
-
 thinLineIndices :: [Int]
 thinLineIndices = [1, 2, 4, 5, 7, 8]
 
@@ -135,7 +133,6 @@ drawGrid =
       ]
 
 -- Board
-
 drawBoard :: World -> Picture
 drawBoard = drawDigits
 
@@ -169,7 +166,6 @@ isGiven :: GameState -> Cell -> Bool
 isGiven gs (Cell i) = gsGivens gs V.! i
 
 -- Selection
-
 drawSelection :: World -> Picture
 drawSelection world =
   case uiSelected (worldUI world) of
@@ -181,7 +177,6 @@ drawSelection world =
               rectangleSolid w h
 
 -- Conflicts
-
 drawConflicts :: World -> Picture
 drawConflicts world
   | not (uiShowConflicts (worldUI world)) = Blank
@@ -194,8 +189,26 @@ drawConflicts world
         | c <- Set.toList (conflictingCells (gsCurrent (worldGame world)))
         ]
 
--- Status bar
+drawErrorCell :: World -> Picture
+drawErrorCell world =
+  case uiErrorCell (worldUI world) of
+    Nothing -> Blank
+    Just c  ->
+      let (x, y, w, h) = cellRect c
+          a = uiErrorAlpha (worldUI world)
+       in Color (withAlpha a conflictColor) $
+            translate x y $
+              rectangleSolid w h
 
+drawSolvedOverlay :: World -> Picture
+drawSolvedOverlay world
+  | not (uiSolved (worldUI world)) = Blank
+  | otherwise =
+      Color (withAlpha (uiSolvedAlpha (worldUI world)) solvedHighlightColor) $
+        translate (boardLeft + boardSize / 2) (boardTop - boardSize / 2) $
+          rectangleSolid boardSize boardSize
+
+-- Status bar
 drawStatusBar :: World -> Picture
 drawStatusBar world =
   translate (-300) statusY $
@@ -204,8 +217,8 @@ drawStatusBar world =
         Text msg
   where
     msg = fromMaybe "Sudoku" (uiMessage (worldUI world))
--- Geometry helpers
 
+-- Geometry helpers
 cellCenter :: Cell -> (Float, Float)
 cellCenter (Cell i) = (x, y)
   where
@@ -219,8 +232,7 @@ cellRect c = (x, y, cellSize, cellSize)
   where
     (x, y) = cellCenter c
 
--- Mouse → Cell
-
+-- Mouse -> Cell
 pointToCell :: (Float, Float) -> Maybe Cell
 pointToCell (x, y)
   | x < boardLeft || x > boardLeft + boardSize = Nothing

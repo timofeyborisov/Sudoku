@@ -200,7 +200,7 @@ isUnitCompleteAndValid :: Board -> LineKind -> Bool
 isUnitCompleteAndValid board lk =
   let vals = [boardGet board c | c <- unitIndices lk]
    in length vals == 9
-      && all (/= 0) vals
+      && notElem 0 vals
       && Set.size (Set.fromList vals) == 9
 
 isSolved :: Board -> Bool
