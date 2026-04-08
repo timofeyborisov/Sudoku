@@ -1,16 +1,12 @@
 module Levels
-  ( 
-  -- Paths to puzzle sets
-    defaultLevelDir
-  , levelFilesForDifficulty
-  , minBundledPuzzleCount
+  ( levelFiles
   -- Loading
   , loadPuzzleFromFile
   , parsePuzzleString
-  -- Puzzle choice
+  -- Picking puzzle
   , pickRandomPuzzlePath
   , loadRandomPuzzle
-  , loadPuzzleByDifficulty
+  , loadPuzzleByIndex
   ) where
 
 import System.Random (StdGen, randomR)
@@ -19,23 +15,15 @@ import Data.Char (isSpace)
 
 import Types
 
--- Directory with level files relative to launch (replace with data-files if necessary)
-defaultLevelDir :: FilePath
-defaultLevelDir = "levels"
 
--- List of files for a given difficulty
-levelFilesForDifficulty :: Difficulty -> [FilePath]
-levelFilesForDifficulty Easy    = ["levels/Easy.txt"]
-levelFilesForDifficulty Medium  = ["levels/Medium.txt"]
-levelFilesForDifficulty Hard    = ["levels/Hard.txt"]
-levelFilesForDifficulty Expert  = ["levels/Hard.txt"]
-levelFilesForDifficulty Extreme = ["levels/Hard.txt"]
+levelFiles :: [FilePath]
+levelFiles =
+  [ "levels/Level1.txt"
+  , "levels/Level2.txt"
+  , "levels/Level3.txt"
+  ]
 
--- Minimum number of built-in puzzles
-minBundledPuzzleCount :: Int
-minBundledPuzzleCount = 5
-
--- Read file: 81 characters, empty cell — @0@, @.@ or space.
+-- 81 characters, empty cell — 0, "." or space.
 loadPuzzleFromFile :: FilePath -> IO (Either String LoadedPuzzle)
 loadPuzzleFromFile path = do
   content <- readFile path
@@ -67,8 +55,6 @@ parsePuzzleString input
       | otherwise = Left ("Invalid character: " ++ [c])
 
 
-
--- Random file picker
 pickRandomPuzzlePath :: [FilePath] -> StdGen -> (FilePath, StdGen)
 pickRandomPuzzlePath paths g =
   case paths of
@@ -77,19 +63,19 @@ pickRandomPuzzlePath paths g =
       let (i, g') = randomR (0, length paths - 1) g
        in (paths !! i, g')
 
--- Load a random puzzle of the given difficulty
-loadRandomPuzzle :: Difficulty -> StdGen -> IO (Either String LoadedPuzzle)
-loadRandomPuzzle diff g = do
-  let paths = levelFilesForDifficulty diff
+loadRandomPuzzle :: StdGen -> IO (Either String LoadedPuzzle)
+loadRandomPuzzle g = do
+  let paths = levelFiles
   if null paths
-    then pure (Left "No files for this difficulty")
+    then pure (Left "No level files found")
     else do
       let (path, _) = pickRandomPuzzlePath paths g
       loadPuzzleFromFile path
 
 -- Load a puzzle by its index in the list for the given difficulty.
-loadPuzzleByDifficulty :: Difficulty -> Int -> IO (Either String LoadedPuzzle)
-loadPuzzleByDifficulty diff idx =
-  case drop idx (levelFilesForDifficulty diff) of
-    []      -> pure (Left "Index out of range")
-    (p : _) -> loadPuzzleFromFile p
+loadPuzzleByIndex :: Int -> IO (Either String LoadedPuzzle)
+loadPuzzleByIndex idx
+  | idx < 0 || idx >= length levelFiles =
+      pure (Left "Index out of range")
+  | otherwise =
+      loadPuzzleFromFile (levelFiles !! idx)

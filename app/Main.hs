@@ -12,7 +12,9 @@ import Board
 
 main :: IO ()
 main = do
-  puzzle <- loadPuzzleFromFile "levels/Easy.txt" 
+  -- gen <- getStdGen
+  -- puzzle <- loadRandomPuzzle gen
+  puzzle <- loadPuzzleByIndex 0
 
   let world =
         case puzzle of

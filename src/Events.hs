@@ -4,6 +4,7 @@ module Events
   ) where
 
 import Graphics.Gloss.Interface.Pure.Game
+import qualified Data.Vector as V
 
 import Types
 import Board
@@ -135,13 +136,19 @@ setNormalState world newGame =
 clearCell :: World -> Cell -> World
 clearCell world cell =
   let gs = worldGame world
-   in world
-        { worldGame = gs { gsCurrent = boardClear (gsCurrent gs) cell }
-        , worldUI   = (worldUI world)
-            { uiMessage   = Just "Sudoku"
-            , uiErrorCell = Nothing
+      isImmutable = case cell of
+        Cell i -> gsGivens gs V.! i
+   in if isImmutable
+        then
+          setErrorState world cell MoveImmutable
+        else
+          world
+            { worldGame = gs { gsCurrent = boardClear (gsCurrent gs) cell }
+            , worldUI   = (worldUI world)
+                { uiMessage   = Just "Sudoku"
+                , uiErrorCell = Nothing
+                }
             }
-        }
         
 -- Print error messages
 prettyMoveValidity :: MoveValidity -> String
