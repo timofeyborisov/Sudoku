@@ -155,5 +155,4 @@ prettyMoveValidity :: MoveValidity -> String
 prettyMoveValidity MoveOk = "Sudoku"
 prettyMoveValidity MoveConflict = "This move is not allowed"
 prettyMoveValidity MoveImmutable = "This cell cannot be changed"
-prettyMoveValidity MoveInvalidDigit = "Only digits 1-9 are allowed"
 prettyMoveValidity MoveInvalidCell = "Invalid cell"

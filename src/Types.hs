@@ -34,12 +34,10 @@ data Difficulty
   | Extreme
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
--- Is move correct?
 data MoveValidity
   = MoveOk
   | MoveConflict -- The move breaks a row, column, or 3x3 block.
   | MoveImmutable -- Given by the condition
-  | MoveInvalidDigit -- Out of 1..9
   | MoveInvalidCell -- Out of 0..80
   deriving (Eq, Show)
 
@@ -52,7 +50,7 @@ data LineKind
 data SolverStrategy
   = StrategyNakedSingle -- There is only one candidate in a cell
   | StrategyHiddenSingle -- In a unit (row/column/block), a digit is only possible in one cell
-  | StrategyNakedPair -- Reserved for further heuristics
+  | StrategyNakedPair -- Reserved
   | StrategyBacktrack -- Brute force with backtracking if there are no simple moves
   deriving (Eq, Show, Enum, Bounded)
 

@@ -50,9 +50,6 @@ validUnitIndex i = i >= 0 && i < 9
 isValidCell :: Cell -> Bool
 isValidCell (Cell i) = i >= 0 && i < 81
 
-isValidDigit :: Digit -> Bool
-isValidDigit (Digit d) = d >= 1 && d <= 9
-
 isGivenCell :: Vector Bool -> Cell -> Bool
 isGivenCell givens (Cell i) =
   i >= 0 && i < V.length givens && givens V.! i
@@ -143,7 +140,6 @@ allCells = [Cell i | i <- [0 .. 80]]
 
 
 -- Board processing
-
 -- Define 9x9 board
 emptyBoard :: Board
 emptyBoard = Board (V.replicate 81 0)
@@ -161,7 +157,6 @@ boardClear (Board v) (Cell i) = Board (v V.// [(i, 0)])
 
 
 -- Conflicts 
-
 -- Set of candidates (what can be put in the cell)
 candidatesAt :: Board -> Cell -> Set Digit
 candidatesAt board cell
@@ -177,15 +172,13 @@ candidatesAt board cell
 checkMove :: Board -> Vector Bool -> Cell -> Digit -> MoveValidity
 checkMove board givens cell digit
   | not (isValidCell cell) = MoveInvalidCell
-  | not (isValidDigit digit) = MoveInvalidDigit
   | isGivenCell givens cell = MoveImmutable
   | hasConflictAt board cell digit = MoveConflict
   | otherwise = MoveOk
 
 hasConflictAt :: Board -> Cell -> Digit -> Bool
-hasConflictAt board cell digit@(Digit d)
+hasConflictAt board cell (Digit d)
   | not (isValidCell cell) = False
-  | not (isValidDigit digit) = False
   | otherwise =
       any unitHasConflict (unitsOfCell cell)
   where
@@ -209,7 +202,6 @@ isSolved board =
 
 
 -- Application
-
 applyMove :: GameState -> Cell -> Digit -> Either MoveValidity GameState
 applyMove gs cell digit =
   case checkMove (gsCurrent gs) (gsGivens gs) cell digit of
@@ -225,4 +217,3 @@ gameFromLoaded lp =
     , gsCurrent = lpBoard lp
     , gsGivens  = lpGivens lp
     }
-

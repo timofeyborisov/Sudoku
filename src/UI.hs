@@ -235,8 +235,8 @@ cellRect c = (x, y, cellSize, cellSize)
 -- Mouse -> Cell
 pointToCell :: (Float, Float) -> Maybe Cell
 pointToCell (x, y)
-  | x < boardLeft || x > boardLeft + boardSize = Nothing
-  | y > boardTop  || y < boardTop - boardSize  = Nothing
+  | x < boardLeft || x >= boardLeft + boardSize = Nothing
+  | y > boardTop  || y <= boardTop - boardSize  = Nothing
   | otherwise = Just (Cell (row * 9 + col))
   where
     col = floor ((x - boardLeft) / cellSize)

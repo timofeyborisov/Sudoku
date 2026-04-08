@@ -31,7 +31,6 @@ loadPuzzleFromFile path = do
     []      -> pure (Left "Empty file")
     (p : _) -> pure (parsePuzzleString p)
 
--- Parse normalized puzzle text of length 81.
 parsePuzzleString :: String -> Either String LoadedPuzzle
 parsePuzzleString input
   | length chars /= 81 = Left "Puzzle must contain exactly 81 cells"
