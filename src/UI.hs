@@ -9,7 +9,7 @@ module UI
   , cellCenter
   , cellRect
   , pointToCell
-  , withAlpha
+  , buttonAt
   ) where
 
 import Graphics.Gloss
@@ -34,17 +34,47 @@ boardTop = boardSize / 2
 statusY :: Float
 statusY = -320
 
+statusX :: Float
+statusX = -270
+
 thinLineWidth :: Float
 thinLineWidth = 1
 
 thickLineWidth :: Float
 thickLineWidth = 3
 
+buttonWidth :: Float
+buttonWidth = 160
+
+buttonHeight :: Float
+buttonHeight = 42
+
+buttonBorderWidth :: Float
+buttonBorderWidth = 2
+
+menuTitleX :: Float
+menuTitleX = boardLeft - 10
+
+menuTitleY :: Float
+menuTitleY = 250
+
+menuSubtitleY :: Float
+menuSubtitleY = menuTitleY - 45
+
 -- Main render
 renderWorld :: World -> Picture
 renderWorld world =
+  case uiScreen (worldUI world) of
+    MainMenu -> drawMainMenu
+    DifficultyMenu -> drawDifficultyMenu
+    PuzzleMenu difficulty -> drawPuzzleMenu difficulty
+    Playing -> drawGameWorld world
+
+drawGameWorld :: World -> Picture
+drawGameWorld world =
   Pictures
     [ drawBackground
+    , drawTopBar
     , drawSelection world
     , drawErrorCell world
     , drawSolvedOverlay world
@@ -59,6 +89,182 @@ drawBackground :: Picture
 drawBackground =
   Color backgroundColor $
     rectangleSolid (fromIntegral windowWidth) (fromIntegral windowHeight)
+
+drawMainMenu :: Picture
+drawMainMenu =
+  Pictures
+    [ drawBackground
+    , drawMenuTitle 0.26 "Sudoku"
+    , drawMenuSubtitle "Choose a puzzle and test your logic."
+    , drawButtonOnScreen MainMenu ButtonPlay
+    ]
+
+drawDifficultyMenu :: Picture
+drawDifficultyMenu =
+  Pictures
+    [ drawBackground
+    , drawMenuTitle 0.26 "Choose a difficulty"
+    , drawButtonOnScreen DifficultyMenu (ButtonDifficulty Easy)
+    , drawButtonOnScreen DifficultyMenu (ButtonDifficulty Medium)
+    , drawButtonOnScreen DifficultyMenu (ButtonDifficulty Hard)
+    , drawButtonOnScreen DifficultyMenu ButtonBack
+    ]
+
+drawPuzzleMenu :: Difficulty -> Picture
+drawPuzzleMenu difficulty =
+  Pictures
+    [ drawBackground
+    , drawMenuTitle 0.26 (difficultyLabel difficulty ++ " puzzles")
+    , drawButtonOnScreen (PuzzleMenu difficulty) (ButtonPuzzle 1)
+    , drawButtonOnScreen (PuzzleMenu difficulty) (ButtonPuzzle 2)
+    , drawButtonOnScreen (PuzzleMenu difficulty) (ButtonPuzzle 3)
+    , drawButtonOnScreen (PuzzleMenu difficulty) (ButtonPuzzle 4)
+    , drawButtonOnScreen (PuzzleMenu difficulty) (ButtonPuzzle 5)
+    , drawButtonOnScreen (PuzzleMenu difficulty) ButtonRandom
+    , drawButtonOnScreen (PuzzleMenu difficulty) ButtonBack
+    ]
+
+drawMenuTitle :: Float -> String -> Picture
+drawMenuTitle textScale title =
+  translate menuTitleX menuTitleY $
+    scale textScale textScale $
+      Color thickGridColor $
+        Text title
+
+drawMenuSubtitle :: String -> Picture
+drawMenuSubtitle subtitle =
+  translate menuTitleX menuSubtitleY $
+    scale 0.12 0.12 $
+      Color statusColor $
+        Text subtitle
+
+drawTopBar :: Picture
+drawTopBar =
+  Pictures
+    [ drawButtonOnScreen Playing ButtonHint
+    , drawButtonOnScreen Playing ButtonSolve
+    , drawButtonOnScreen Playing ButtonMenu
+    ]
+
+drawButtonOnScreen :: Screen -> ButtonAction -> Picture
+drawButtonOnScreen screen action =
+  case buttonRectForScreen screen action of
+    Nothing -> Blank
+    Just rect ->
+      drawMenuButton rect (buttonLabel action)
+
+drawMenuButton :: (Float, Float, Float, Float) -> String -> Picture
+drawMenuButton (x, y, w, h) label =
+  Pictures
+    [ Color buttonFillColor $
+        translate x y $
+          rectangleSolid w h
+    , Color thickGridColor $
+        translate x (y + h / 2) $
+          rectangleSolid w buttonBorderWidth
+    , Color thickGridColor $
+        translate x (y - h / 2) $
+          rectangleSolid w buttonBorderWidth
+    , Color thickGridColor $
+        translate (x - w / 2) y $
+          rectangleSolid buttonBorderWidth h
+    , Color thickGridColor $
+        translate (x + w / 2) y $
+          rectangleSolid buttonBorderWidth h
+    , translate (x - textOffset label) (y - 8) $
+        scale 0.14 0.14 $
+          Color statusColor $
+            Text label
+    ]
+
+buttonAt :: World -> (Float, Float) -> Maybe ButtonAction
+buttonAt world point =
+  let screen = uiScreen (worldUI world)
+   in
+  case
+    [ action
+    | action <- buttonsForScreen screen
+    , pointInButton screen point action
+    ] of
+      [] -> Nothing
+      action : _ -> Just action
+
+buttonsForScreen :: Screen -> [ButtonAction]
+buttonsForScreen MainMenu = [ButtonPlay]
+buttonsForScreen DifficultyMenu =
+  [ ButtonDifficulty Easy
+  , ButtonDifficulty Medium
+  , ButtonDifficulty Hard
+  , ButtonBack
+  ]
+buttonsForScreen (PuzzleMenu _) =
+  [ ButtonPuzzle 1
+  , ButtonPuzzle 2
+  , ButtonPuzzle 3
+  , ButtonPuzzle 4
+  , ButtonPuzzle 5
+  , ButtonRandom
+  , ButtonBack
+  ]
+buttonsForScreen Playing = [ButtonHint, ButtonSolve, ButtonMenu]
+
+pointInButton :: Screen -> (Float, Float) -> ButtonAction -> Bool
+pointInButton screen (px, py) action =
+  case buttonRectForScreen screen action of
+    Nothing -> False
+    Just (x, y, w, h) ->
+      px >= x - w / 2 &&
+      px <= x + w / 2 &&
+      py >= y - h / 2 &&
+      py <= y + h / 2
+
+buttonRectForScreen :: Screen -> ButtonAction -> Maybe (Float, Float, Float, Float)
+buttonRectForScreen MainMenu ButtonPlay = centerButton (-15)
+buttonRectForScreen DifficultyMenu (ButtonDifficulty Easy) = centerButton 75
+buttonRectForScreen DifficultyMenu (ButtonDifficulty Medium) = centerButton 0
+buttonRectForScreen DifficultyMenu (ButtonDifficulty Hard) = centerButton (-75)
+buttonRectForScreen DifficultyMenu ButtonBack = backButton
+buttonRectForScreen (PuzzleMenu _) (ButtonPuzzle 1) = centerButton 110
+buttonRectForScreen (PuzzleMenu _) (ButtonPuzzle 2) = centerButton 55
+buttonRectForScreen (PuzzleMenu _) (ButtonPuzzle 3) = centerButton 0
+buttonRectForScreen (PuzzleMenu _) (ButtonPuzzle 4) = centerButton (-55)
+buttonRectForScreen (PuzzleMenu _) (ButtonPuzzle 5) = centerButton (-110)
+buttonRectForScreen (PuzzleMenu _) ButtonRandom = centerButton (-180)
+buttonRectForScreen (PuzzleMenu _) ButtonBack = backButton
+buttonRectForScreen Playing ButtonHint = topBarButton (-190)
+buttonRectForScreen Playing ButtonSolve = topBarButton 0
+buttonRectForScreen Playing ButtonMenu = topBarButton 190
+buttonRectForScreen _ _ = Nothing
+
+centerButton :: Float -> Maybe (Float, Float, Float, Float)
+centerButton y = Just (0, y, buttonWidth, buttonHeight)
+
+backButton :: Maybe (Float, Float, Float, Float)
+backButton = Just (240, -250, buttonWidth, buttonHeight)
+
+topBarButton :: Float -> Maybe (Float, Float, Float, Float)
+topBarButton x = Just (x, 325, buttonWidth, buttonHeight)
+
+buttonLabel :: ButtonAction -> String
+buttonLabel ButtonPlay = "Play"
+buttonLabel (ButtonDifficulty difficulty) = difficultyLabel difficulty
+buttonLabel (ButtonPuzzle idx) = show idx
+buttonLabel ButtonRandom = "Random"
+buttonLabel ButtonBack = "Back"
+buttonLabel ButtonHint = "Hint"
+buttonLabel ButtonSolve = "Solve"
+buttonLabel ButtonMenu = "Menu"
+
+difficultyLabel :: Difficulty -> String
+difficultyLabel Easy = "Easy"
+difficultyLabel Medium = "Medium"
+difficultyLabel Hard = "Hard"
+
+buttonFillColor :: Color
+buttonFillColor = selectionColor
+
+textOffset :: String -> Float
+textOffset label = fromIntegral (length label) * 4.5
 
 -- Grid
 thinLineIndices :: [Int]
@@ -211,7 +417,7 @@ drawSolvedOverlay world
 -- Status bar
 drawStatusBar :: World -> Picture
 drawStatusBar world =
-  translate (-300) statusY $
+  translate statusX statusY $
     scale 0.15 0.15 $
       Color statusColor $
         Text msg

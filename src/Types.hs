@@ -6,6 +6,9 @@ module Types
   , MoveValidity(..)
   , LineKind(..)
   , SolverStrategy(..)
+  , Screen(..)
+  , ButtonAction(..)
+  , SolveAction(..)
   , LoadedPuzzle(..)
   , GameState(..)
   , UIState(..)
@@ -30,8 +33,6 @@ data Difficulty
   = Easy
   | Medium
   | Hard
-  | Expert
-  | Extreme
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 data MoveValidity
@@ -48,11 +49,35 @@ data LineKind
   deriving (Eq, Show)
 
 data SolverStrategy
-  = StrategyNakedSingle -- There is only one candidate in a cell
-  | StrategyHiddenSingle -- In a unit (row/column/block), a digit is only possible in one cell
-  | StrategyNakedPair -- Reserved
-  | StrategyBacktrack -- Brute force with backtracking if there are no simple moves
+  = StrategyNakedSingle
+  | StrategyHiddenSingle
+  | StrategyNakedPair
+  | StrategyBacktrack
   deriving (Eq, Show, Enum, Bounded)
+
+data Screen
+  = MainMenu
+  | DifficultyMenu
+  | PuzzleMenu Difficulty
+  | Playing
+  deriving (Eq, Show)
+
+data ButtonAction
+  = ButtonPlay
+  | ButtonDifficulty Difficulty
+  | ButtonPuzzle Int
+  | ButtonRandom
+  | ButtonBack
+  | ButtonHint
+  | ButtonSolve
+  | ButtonMenu
+  deriving (Eq, Show)
+
+data SolveAction
+  = SolveStatus String Float
+  | SolveMove Cell Digit
+  | SolveFinish String
+  deriving (Eq, Show)
 
 data LoadedPuzzle = LoadedPuzzle
   { lpBoard :: Board
@@ -66,18 +91,21 @@ data GameState = GameState
   } deriving (Eq, Show)
 
 data UIState = UIState
-  { uiSolved :: Bool
+  { uiScreen :: Screen
+  , uiSolved :: Bool
   , uiSelected :: Maybe Cell
-  , uiHover :: Maybe Cell
-  , uiShowHints :: Bool
   , uiShowConflicts :: Bool
   , uiMessage :: Maybe String
   , uiErrorCell :: Maybe Cell
   , uiErrorAlpha :: Float
   , uiSolvedAlpha :: Float
+  , uiSolveScript :: [SolveAction]
+  , uiSolveTimer :: Float
   } deriving (Eq, Show)
 
 data World = World
   { worldGame :: GameState
   , worldUI :: UIState
+  , worldLevels :: [(Difficulty, [LoadedPuzzle])]
+  , worldRandomSeed :: Int
   } deriving (Eq, Show)

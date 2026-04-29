@@ -11,34 +11,32 @@ import Levels
 import Board
 
 main :: IO ()
-main = do
-  -- gen <- getStdGen
-  -- puzzle <- loadRandomPuzzle gen
-  puzzle <- loadPuzzleByIndex 0
-
+main =
   let world =
-        case puzzle of
+        case builtInPuzzles of
           Left err ->
             initialWorld
               { worldUI =
-                  (worldUI initialWorld)
-                    { uiMessage = Just ("Load error: " ++ err) }
+                  initialUIState
+                    { uiMessage = Just ("Load error: " ++ err)
+                    }
               }
 
-          Right loaded ->
-            World
-              { worldGame = gameFromLoaded loaded
-              , worldUI   = initialUIState
+          Right puzzles ->
+            initialWorld
+              { worldLevels = puzzles
+              , worldRandomSeed = 1357911
+              , worldUI = initialUIState
               }
   
-  play
-    window
-    backgroundColor
-    fps
-    world
-    renderWorld
-    handleEvent
-    updateWorld
+   in play
+        window
+        backgroundColor
+        fps
+        world
+        renderWorld
+        handleEvent
+        updateWorld
 
 window :: Display
 window =
@@ -51,7 +49,9 @@ initialWorld :: World
 initialWorld =
   World
     { worldGame = initialGameState
-    , worldUI   = initialUIState
+    , worldUI = initialUIState
+    , worldLevels = []
+    , worldRandomSeed = 1
     }
 
 initialGameState :: GameState
@@ -59,19 +59,20 @@ initialGameState =
   GameState
     { gsInitial = emptyBoard
     , gsCurrent = emptyBoard
-    , gsGivens  = V.replicate 81 False
+    , gsGivens = V.replicate 81 False
     }
 
 initialUIState :: UIState
 initialUIState =
   UIState
-    { uiSolved = False
+    { uiScreen = MainMenu
+    , uiSolved = False
     , uiSelected = Nothing
-    , uiHover = Nothing
-    , uiShowHints = False
     , uiShowConflicts = True
     , uiMessage = Just "Sudoku"
     , uiErrorCell = Nothing
     , uiErrorAlpha = 0.0
     , uiSolvedAlpha = 0.0
+    , uiSolveScript = []
+    , uiSolveTimer = 0.0
     }
