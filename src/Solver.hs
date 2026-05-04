@@ -7,7 +7,7 @@ module Solver
   ) where
 
 import Data.List (minimumBy)
-import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Maybe (isJust, listToMaybe, mapMaybe)
 import Data.Ord (comparing)
 import Data.Set (Set)
 import qualified Data.Set as Set
@@ -15,7 +15,7 @@ import qualified Data.Set as Set
 import Board
 import Types
 
-
+-- Shared data
 digits :: [Digit]
 digits = [Digit d | d <- [1 .. 9]]
 
@@ -33,6 +33,7 @@ solverStrategies =
   , StrategyBacktrack
   ]
 
+-- Labels
 strategyLabel :: SolverStrategy -> String
 strategyLabel StrategyNakedSingle = "NakedSingle"
 strategyLabel StrategyHiddenSingle = "HiddenSingle"
@@ -42,10 +43,30 @@ strategyLabel StrategyBacktrack = "Backtrack"
 solveStep :: Board -> Maybe (SolverStrategy, Cell, Digit)
 solveStep = solveStepUpTo StrategyBacktrack
 
+-- One step
 solveStepUpTo :: SolverStrategy -> Board -> Maybe (SolverStrategy, Cell, Digit)
-solveStepUpTo strategy board =
-  firstJust (stepFunctions strategy board)
+solveStepUpTo StrategyNakedSingle board =
+  nakedSingle board
+solveStepUpTo StrategyHiddenSingle board =
+  firstJust
+    [ nakedSingle board
+    , hiddenSingle board
+    ]
+solveStepUpTo StrategyNakedPair board =
+  firstJust
+    [ nakedSingle board
+    , hiddenSingle board
+    , nakedPairStep board
+    ]
+solveStepUpTo StrategyBacktrack board =
+  firstJust
+    [ nakedSingle board
+    , hiddenSingle board
+    , nakedPairStep board
+    , backtrackStep board
+    ]
 
+-- Full solve
 solveWithStrategy :: SolverStrategy -> Board -> Maybe [(Cell, Digit)]
 solveWithStrategy strategy board
   | hasContradiction board = Nothing
@@ -59,25 +80,7 @@ solveFull :: Board -> Maybe Board
 solveFull board =
   applyMoves board <$> solveWithStrategy StrategyBacktrack board
 
-stepFunctions :: SolverStrategy -> Board -> [Maybe (SolverStrategy, Cell, Digit)]
-stepFunctions StrategyNakedSingle board =
-  [nakedSingle board]
-stepFunctions StrategyHiddenSingle board =
-  [ nakedSingle board
-  , hiddenSingle board
-  ]
-stepFunctions StrategyNakedPair board =
-  [ nakedSingle board
-  , hiddenSingle board
-  , nakedPairStep board
-  ]
-stepFunctions StrategyBacktrack board =
-  [ nakedSingle board
-  , hiddenSingle board
-  , nakedPairStep board
-  , backtrackStep board
-  ]
-
+-- Basic strategies
 nakedSingle :: Board -> Maybe (SolverStrategy, Cell, Digit)
 nakedSingle board =
   listToMaybe
@@ -89,58 +92,64 @@ nakedSingle board =
 
 hiddenSingle :: Board -> Maybe (SolverStrategy, Cell, Digit)
 hiddenSingle board =
-  listToMaybe (mapMaybe hiddenSingleInUnit allUnits)
-  where
-    hiddenSingleInUnit lk =
-      listToMaybe
-        [ (StrategyHiddenSingle, cell, digit)
-        | digit <- digits
-        , let cells = possibleCellsFor digit lk
-        , [cell] <- [cells]
-        ]
+  listToMaybe (mapMaybe (hiddenSingleInUnit board) allUnits)
 
-    possibleCellsFor digit lk =
-      [ cell
-      | cell <- unitIndices lk
-      , boardGet board cell == 0
-      , digit `Set.member` candidatesAt board cell
-      ]
+hiddenSingleInUnit :: Board -> LineKind -> Maybe (SolverStrategy, Cell, Digit)
+hiddenSingleInUnit board lk =
+  listToMaybe
+    [ (StrategyHiddenSingle, cell, digit)
+    | digit <- digits
+    , let cells = possibleCellsFor board digit lk
+    , [cell] <- [cells]
+    ]
+
+possibleCellsFor :: Board -> Digit -> LineKind -> [Cell]
+possibleCellsFor board digit lk =
+  [ cell
+  | cell <- unitIndices lk
+  , boardGet board cell == 0
+  , digit `Set.member` candidatesAt board cell
+  ]
 
 nakedPairStep :: Board -> Maybe (SolverStrategy, Cell, Digit)
 nakedPairStep board =
-  listToMaybe (mapMaybe nakedPairInUnit allUnits)
-  where
-    nakedPairInUnit lk =
-      listToMaybe
-        [ (StrategyNakedPair, cell, digit)
-        | pair <- nakedPairs lk
-        , cell <- unitIndices lk
-        , boardGet board cell == 0
-        , candidatesAt board cell /= pair
-        , let reduced = candidatesAt board cell `Set.difference` pair
-        , Set.size reduced == 1
-        , digit <- Set.toList reduced
-        ]
+  listToMaybe (mapMaybe (nakedPairInUnit board) allUnits)
 
-    nakedPairs lk =
-      [ pair
-      | let candidateSets =
-              [ candidatesAt board cell
-              | cell <- unitIndices lk
-              , boardGet board cell == 0
-              ]
-      , pair <- candidateSets
-      , Set.size pair == 2
-      , length (filter (== pair) candidateSets) == 2
+nakedPairInUnit :: Board -> LineKind -> Maybe (SolverStrategy, Cell, Digit)
+nakedPairInUnit board lk =
+  listToMaybe
+    [ (StrategyNakedPair, cell, digit)
+    | pair <- nakedPairs board lk
+    , cell <- unitIndices lk
+    , boardGet board cell == 0
+    , candidatesAt board cell /= pair
+    , let reduced = candidatesAt board cell `Set.difference` pair
+    , Set.size reduced == 1
+    , digit <- Set.toList reduced
+    ]
+
+nakedPairs :: Board -> LineKind -> [Set Digit]
+nakedPairs board lk =
+  [ pair
+  | pair <- candidateSets
+  , Set.size pair == 2
+  , length (filter (== pair) candidateSets) == 2
+  ]
+  where
+    candidateSets =
+      [ candidatesAt board cell
+      | cell <- unitIndices lk
+      , boardGet board cell == 0
       ]
 
+-- Backtracking
 backtrackStep :: Board -> Maybe (SolverStrategy, Cell, Digit)
 backtrackStep board = do
   (cell, candidates) <- bestBranchCell board
   digit <- listToMaybe
     [ candidate
     | candidate <- Set.toList candidates
-    , solveWithStrategy StrategyBacktrack (boardSet board cell candidate) /= Nothing
+    , isJust (solveWithStrategy StrategyBacktrack (boardSet board cell candidate))
     ]
   pure (StrategyBacktrack, cell, digit)
 
@@ -162,16 +171,20 @@ emptyCells board =
   , boardGet board cell == 0
   ]
 
+-- Validation
 hasContradiction :: Board -> Bool
 hasContradiction board =
   not (Set.null (conflictingCells board)) ||
   any (Set.null . candidatesAt board) (emptyCells board)
 
+-- Apply solution
 applyMoves :: Board -> [(Cell, Digit)] -> Board
-applyMoves = foldl applyOneMove
-  where
-    applyOneMove acc (cell, digit) = boardSet acc cell digit
+applyMoves = foldl boardAfterMove
 
+boardAfterMove :: Board -> (Cell, Digit) -> Board
+boardAfterMove board (cell, digit) = boardSet board cell digit
+
+-- Small helper
 firstJust :: [Maybe a] -> Maybe a
 firstJust [] = Nothing
 firstJust (Nothing : xs) = firstJust xs

@@ -6,9 +6,11 @@ module Types
   , MoveValidity(..)
   , LineKind(..)
   , SolverStrategy(..)
+  , Theme(..)
   , Screen(..)
   , ButtonAction(..)
   , SolveAction(..)
+  , UIAssets(..)
   , LoadedPuzzle(..)
   , GameState(..)
   , UIState(..)
@@ -16,38 +18,41 @@ module Types
   ) where
 
 import Data.Vector (Vector)
+import Graphics.Gloss.Data.Picture (Picture)
 
--- 1..9
+-- Board values
 newtype Digit = Digit Int
   deriving (Eq, Ord, Show, Read)
 
--- 0..80
 newtype Cell = Cell Int
   deriving (Eq, Ord, Show, Read)
 
--- 9x9
 newtype Board = Board (Vector Int)
   deriving (Eq, Show, Read)
 
+-- Game settings
 data Difficulty
   = Easy
   | Medium
   | Hard
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
+-- Move results
 data MoveValidity
   = MoveOk
-  | MoveConflict -- The move breaks a row, column, or 3x3 block.
-  | MoveImmutable -- Given by the condition
-  | MoveInvalidCell -- Out of 0..80
+  | MoveConflict
+  | MoveImmutable
+  | MoveInvalidCell
   deriving (Eq, Show)
 
+-- Board groups
 data LineKind
   = Row Int
   | Col Int
-  | Box Int -- 3x3 
+  | Box Int
   deriving (Eq, Show)
 
+-- Solver modes
 data SolverStrategy
   = StrategyNakedSingle
   | StrategyHiddenSingle
@@ -55,6 +60,13 @@ data SolverStrategy
   | StrategyBacktrack
   deriving (Eq, Show, Enum, Bounded)
 
+-- Visual theme
+data Theme
+  = LightTheme
+  | DarkTheme
+  deriving (Eq, Show)
+
+-- App screens
 data Screen
   = MainMenu
   | DifficultyMenu
@@ -62,38 +74,63 @@ data Screen
   | Playing
   deriving (Eq, Show)
 
+-- Button actions
 data ButtonAction
   = ButtonPlay
   | ButtonDifficulty Difficulty
   | ButtonPuzzle Int
   | ButtonRandom
+  | ButtonGenerate
   | ButtonBack
   | ButtonHint
   | ButtonSolve
+  | ButtonTheme
+  | ButtonReset
   | ButtonMenu
   deriving (Eq, Show)
 
+-- Solver animation
 data SolveAction
   = SolveStatus String Float
   | SolveMove Cell Digit
   | SolveFinish String
   deriving (Eq, Show)
 
+-- UI icons
+data UIAssets = UIAssets
+  { uiBulbIcon :: Picture
+  , uiBulbIconWhite :: Picture
+  , uiThemeIcon :: Picture
+  , uiThemeIconWhite :: Picture
+  , uiDiceIcon :: Picture
+  , uiDiceIconWhite :: Picture
+  , uiResetIcon :: Picture
+  , uiResetIconWhite :: Picture
+  , uiGenerateIcon :: Picture
+  , uiGenerateIconWhite :: Picture
+  }
+
+-- Loaded puzzle
 data LoadedPuzzle = LoadedPuzzle
   { lpBoard :: Board
   , lpGivens :: Vector Bool
   } deriving (Eq, Show)
 
+-- Game state
 data GameState = GameState
   { gsInitial :: Board
   , gsCurrent :: Board
   , gsGivens :: Vector Bool
   } deriving (Eq, Show)
 
+-- UI state
 data UIState = UIState
   { uiScreen :: Screen
+  , uiTheme :: Theme
   , uiSolved :: Bool
   , uiSelected :: Maybe Cell
+  , uiHoverCell :: Maybe Cell
+  , uiHoverButton :: Maybe ButtonAction
   , uiShowConflicts :: Bool
   , uiMessage :: Maybe String
   , uiErrorCell :: Maybe Cell
@@ -103,9 +140,11 @@ data UIState = UIState
   , uiSolveTimer :: Float
   } deriving (Eq, Show)
 
+-- Whole app state
 data World = World
   { worldGame :: GameState
   , worldUI :: UIState
   , worldLevels :: [(Difficulty, [LoadedPuzzle])]
   , worldRandomSeed :: Int
-  } deriving (Eq, Show)
+  , worldAssets :: UIAssets
+  }

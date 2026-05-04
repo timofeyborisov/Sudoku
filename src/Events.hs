@@ -5,24 +5,30 @@ module Events
 
 import Graphics.Gloss.Interface.Pure.Game
 import qualified Data.Vector as V
+import System.Random (StdGen, mkStdGen, randomR)
 
 import Types
 import Board
+import Generator
 import Solver
 import UI
 
-
+-- Timing
 solveStepDelay :: Float
 solveStepDelay = 0.04
 
 statusDelay :: Float
 statusDelay = 0.85
 
+-- Main dispatcher
 handleEvent :: Event -> World -> World
 handleEvent event world =
   case event of
     EventKey (MouseButton LeftButton) Down _ pos ->
       handleClick pos world
+
+    EventMotion pos ->
+      updateHover pos world
 
     EventKey (Char ch) Down _ _ ->
       handleCharacter ch world
@@ -33,6 +39,7 @@ handleEvent event world =
     _ ->
       world
 
+-- Mouse input
 handleClick :: (Float, Float) -> World -> World
 handleClick pos world =
   case buttonAt world pos of
@@ -48,6 +55,7 @@ handleClick pos world =
         _ ->
           world
 
+-- Button actions
 handleButton :: ButtonAction -> World -> World
 handleButton ButtonPlay world =
   world
@@ -82,6 +90,16 @@ handleButton ButtonRandom world =
       startLoadedPuzzle loaded world
         { worldRandomSeed = seed'
         }
+handleButton ButtonGenerate world =
+  case uiScreen (worldUI world) of
+    PuzzleMenu difficulty ->
+      let gen = worldGenerator world
+          (loaded, gen') = generatePuzzle difficulty gen
+          seed' = nextGeneratorSeed gen'
+       in startLoadedPuzzle loaded world
+            { worldRandomSeed = seed'
+            }
+    _ -> world
 handleButton ButtonBack world =
   case uiScreen (worldUI world) of
     DifficultyMenu ->
@@ -104,6 +122,14 @@ handleButton ButtonBack world =
       world
 handleButton ButtonHint world = showHint world
 handleButton ButtonSolve world = startSolverAnimation world
+handleButton ButtonTheme world =
+  world
+    { worldUI =
+        (worldUI world)
+          { uiTheme = toggleTheme (uiTheme (worldUI world))
+          }
+    }
+handleButton ButtonReset world = resetCurrentLevel world
 handleButton ButtonMenu world =
   world
     { worldUI =
@@ -112,6 +138,7 @@ handleButton ButtonMenu world =
           }
     }
 
+-- Level start
 startLevel :: Difficulty -> Int -> World -> World
 startLevel difficulty idx world =
   case lookup difficulty (worldLevels world) of
@@ -145,6 +172,7 @@ startLoadedPuzzle loaded world =
           }
     }
 
+-- Hint and hover
 showHint :: World -> World
 showHint world
   | uiScreen (worldUI world) /= Playing = world
@@ -169,18 +197,41 @@ showHint world
                   }
             }
 
+updateHover :: (Float, Float) -> World -> World
+updateHover pos world =
+  world
+    { worldUI =
+        (worldUI world)
+          { uiHoverButton = buttonAt world pos
+          , uiHoverCell = hoverCellAt pos world
+          }
+    }
+
+hoverCellAt :: (Float, Float) -> World -> Maybe Cell
+hoverCellAt pos world =
+  case uiScreen (worldUI world) of
+    Playing
+      | not (isSolving world) -> pointToCell pos
+    _ -> Nothing
+
 selectBoardCell :: (Float, Float) -> World -> World
 selectBoardCell pos world =
   case pointToCell pos of
     Nothing -> world
     Just c  ->
+      let newSelection =
+            if uiSelected (worldUI world) == Just c
+              then Nothing
+              else Just c
+       in
       world
         { worldUI =
             (worldUI world)
-              { uiSelected = Just c
+              { uiSelected = newSelection
               }
         }
 
+-- Keyboard input
 handleCharacter :: Char -> World -> World
 handleCharacter ch world
   | uiScreen (worldUI world) /= Playing = world
@@ -212,6 +263,7 @@ handleSpecialKey key world
 
         _ -> world
 
+-- Time updates
 updateWorld :: Float -> World -> World
 updateWorld dt world =
   advanceSolveScript dt $
@@ -289,8 +341,8 @@ runNextSolveAction world =
 updateUIEffects :: Float -> UIState -> UIState
 updateUIEffects dt ui =
   ui
-    { uiErrorAlpha  = newErrorAlpha
-    , uiErrorCell   = newErrorCell
+    { uiErrorAlpha = newErrorAlpha
+    , uiErrorCell = newErrorCell
     , uiSolvedAlpha = newSolvedAlpha
     }
   where
@@ -302,8 +354,9 @@ updateUIEffects dt ui =
 
     newSolvedAlpha
       | uiSolved ui = max 0 (uiSolvedAlpha ui - dt * 0.05)
-      | otherwise   = 0.0
+      | otherwise = 0.0
 
+-- Player input
 charToDigit :: Char -> Maybe Digit
 charToDigit c
   | c >= '1' && c <= '9' = Just (Digit (read [c]))
@@ -327,8 +380,8 @@ setErrorState world cell err =
   world
     { worldUI =
         (worldUI world)
-          { uiMessage    = Just (prettyMoveValidity err)
-          , uiErrorCell  = Just cell
+          { uiMessage = Just (prettyMoveValidity err)
+          , uiErrorCell = Just cell
           , uiErrorAlpha = 1.0
           }
     }
@@ -360,21 +413,35 @@ setNormalState world newGame =
           }
     }
 
+cellIsImmutable :: GameState -> Cell -> Bool
+cellIsImmutable gs (Cell i) = gsGivens gs V.! i
+
 clearCell :: World -> Cell -> World
 clearCell world cell =
   let gs = worldGame world
-      isImmutable = case cell of
-        Cell i -> gsGivens gs V.! i
-   in if isImmutable
+   in if cellIsImmutable gs cell
         then
           setErrorState world cell MoveImmutable
         else
           world
             { worldGame = gs { gsCurrent = boardClear (gsCurrent gs) cell }
-            , worldUI   = (worldUI world)
+            , worldUI = (worldUI world)
                 { uiMessage   = Just "Sudoku"
                 , uiErrorCell = Nothing
                 }
+            }
+
+resetCurrentLevel :: World -> World
+resetCurrentLevel world
+  | uiScreen (worldUI world) /= Playing = world
+  | otherwise =
+      let gs = worldGame world
+       in world
+            { worldGame = gs { gsCurrent = gsInitial gs }
+            , worldUI =
+                resetTransientUI (worldUI world)
+                  { uiScreen = Playing
+                  }
             }
 
 startSolverAnimation :: World -> World
@@ -401,73 +468,93 @@ startSolverAnimation world
                   , uiSelected = Nothing
                   , uiSolved = False
                   , uiErrorCell = Nothing
+                  , uiHoverCell = Nothing
                   , uiErrorAlpha = 0.0
                   , uiSolvedAlpha = 0.0
                   }
             }
 
+-- Solver script
 buildSolveScript :: Board -> [SolveAction]
 buildSolveScript board =
-  buildStrategyScript solverStrategies
-  where
-    tryStatus strategy =
-      SolveStatus ("Trying " ++ strategyLabel strategy ++ " strategy...") statusDelay
+  buildStrategyScript board solverStrategies
 
-    nextStatus strategy nextStrategy =
-      SolveStatus
-        (strategyLabel strategy ++
-         " was not enough. Trying " ++
-         strategyLabel nextStrategy ++ "...")
-        statusDelay
+buildStrategyScript :: Board -> [SolverStrategy] -> [SolveAction]
+buildStrategyScript _ [] = [SolveFinish "No solver could solve this board"]
+buildStrategyScript board [strategy] =
+  case solveWithStrategy strategy board of
+    Nothing ->
+      [ tryingStatus strategy
+      , failedSolveStatus strategy
+      ]
 
-    solvedStatus strategy =
-      SolveFinish ("Solved using " ++ strategyLabel strategy ++ " strategy")
+    Just moves ->
+      tryingStatus strategy
+      : map (uncurry SolveMove) moves ++
+        [ solvedWithStatus strategy ]
+buildStrategyScript board (strategy : nextStrategy : rest) =
+  case solveWithStrategy strategy board of
+    Nothing ->
+      tryingStatus strategy
+      : nextStrategyStatus strategy nextStrategy
+      : buildStrategyScript board (nextStrategy : rest)
 
-    failedStatus strategy =
-      SolveFinish ("Could not solve using " ++ strategyLabel strategy)
+    Just moves ->
+      tryingStatus strategy
+      : map (uncurry SolveMove) moves ++
+        [ solvedWithStatus strategy ]
 
-    buildStrategyScript [] = [SolveFinish "No solver could solve this board"]
-    buildStrategyScript [strategy] =
-      case solveWithStrategy strategy board of
-        Nothing ->
-          [ tryStatus strategy
-          , failedStatus strategy
-          ]
+tryingStatus :: SolverStrategy -> SolveAction
+tryingStatus strategy =
+  SolveStatus ("Trying " ++ strategyLabel strategy ++ " strategy...") statusDelay
 
-        Just moves ->
-          tryStatus strategy
-          : map (uncurry SolveMove) moves ++
-            [ solvedStatus strategy ]
-    buildStrategyScript (strategy : nextStrategy : rest) =
-      case solveWithStrategy strategy board of
-        Nothing ->
-          tryStatus strategy
-          : nextStatus strategy nextStrategy
-          : buildStrategyScript (nextStrategy : rest)
+nextStrategyStatus :: SolverStrategy -> SolverStrategy -> SolveAction
+nextStrategyStatus strategy nextStrategy =
+  SolveStatus
+    (strategyLabel strategy ++
+     " was not enough. Trying " ++
+     strategyLabel nextStrategy ++ "...")
+    statusDelay
 
-        Just moves ->
-          tryStatus strategy
-          : map (uncurry SolveMove) moves ++
-            [ solvedStatus strategy ]
+solvedWithStatus :: SolverStrategy -> SolveAction
+solvedWithStatus strategy =
+  SolveFinish ("Solved using " ++ strategyLabel strategy ++ " strategy")
 
+failedSolveStatus :: SolverStrategy -> SolveAction
+failedSolveStatus strategy =
+  SolveFinish ("Could not solve using " ++ strategyLabel strategy)
+
+-- Random choice
 pickRandomPuzzle :: World -> Maybe (LoadedPuzzle, Int)
 pickRandomPuzzle world =
   case concatMap snd (worldLevels world) of
     [] -> Nothing
     puzzles ->
-      let seed' = nextSeed (worldRandomSeed world)
-          idx = seed' `mod` length puzzles
+      let gen = worldGenerator world
+          (idx, gen') = randomR (0, length puzzles - 1) gen
+          seed' = nextGeneratorSeed gen'
        in Just (puzzles !! idx, seed')
 
-nextSeed :: Int -> Int
-nextSeed seed =
-  (seed * 1103515245 + 12345) `mod` 2147483647
+worldGenerator :: World -> StdGen
+worldGenerator world = mkStdGen (worldRandomSeed world)
 
+nextGeneratorSeed :: StdGen -> Int
+nextGeneratorSeed gen =
+  fst (randomR (1, 2147483646 :: Int) gen)
+
+-- Theme switch
+toggleTheme :: Theme -> Theme
+toggleTheme LightTheme = DarkTheme
+toggleTheme DarkTheme = LightTheme
+
+-- State reset
 resetTransientUI :: UIState -> UIState
 resetTransientUI ui =
   ui
     { uiSolved = False
     , uiSelected = Nothing
+    , uiHoverCell = Nothing
+    , uiHoverButton = Nothing
     , uiMessage = Just "Sudoku"
     , uiErrorCell = Nothing
     , uiErrorAlpha = 0.0
@@ -480,6 +567,7 @@ isSolving :: World -> Bool
 isSolving world =
   not (null (uiSolveScript (worldUI world)))
 
+-- User messages
 prettyMoveValidity :: MoveValidity -> String
 prettyMoveValidity MoveOk = "Sudoku"
 prettyMoveValidity MoveConflict = "This move is not allowed"

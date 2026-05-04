@@ -38,8 +38,7 @@ import qualified Data.Vector as V
 
 import Types
 
-
--- Helpers
+-- Shared data
 
 digits :: [Digit]
 digits = [Digit d | d <- [1 .. 9]]
@@ -86,8 +85,7 @@ allUnits =
   [ Col i | i <- [0 .. 8] ] ++
   [ Box i | i <- [0 .. 8] ]
 
-
--- Converters (RC - row and column of the cell)
+-- Cell indexing
 cellToRC :: Cell -> (Int, Int)
 cellToRC (Cell i) = (i `div` 9, i `mod` 9)
 
@@ -106,8 +104,7 @@ boxOfCell cell =
       c = colOfCell cell
    in (r `div` 3) * 3 + (c `div` 3)
 
-
--- All indicies of the defined lineKind
+-- Unit cells
 rowIndices :: Int -> [Cell]
 rowIndices r 
   | not (validUnitIndex r) = []
@@ -138,26 +135,20 @@ unitIndices (Box b) = boxIndices b
 allCells :: [Cell]
 allCells = [Cell i | i <- [0 .. 80]]
 
-
--- Board processing
--- Define 9x9 board
+-- Board values
 emptyBoard :: Board
 emptyBoard = Board (V.replicate 81 0)
 
--- Get cell value
 boardGet :: Board -> Cell -> Int
 boardGet (Board v) (Cell i) = v V.! i
 
--- Preliminary check is assumed!
 boardSet :: Board -> Cell -> Digit -> Board
 boardSet (Board v) (Cell i) (Digit d) = Board (v V.// [(i, d)])
 
 boardClear :: Board -> Cell -> Board
 boardClear (Board v) (Cell i) = Board (v V.// [(i, 0)])
 
-
--- Conflicts 
--- Set of candidates (what can be put in the cell)
+-- Rule checks
 candidatesAt :: Board -> Cell -> Set Digit
 candidatesAt board cell
   | not (isValidCell cell) = Set.empty
@@ -200,8 +191,7 @@ isSolved :: Board -> Bool
 isSolved board =
   all (isUnitCompleteAndValid board) allUnits
 
-
--- Application
+-- Game update
 applyMove :: GameState -> Cell -> Digit -> Either MoveValidity GameState
 applyMove gs cell digit =
   case checkMove (gsCurrent gs) (gsGivens gs) cell digit of

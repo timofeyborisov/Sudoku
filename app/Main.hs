@@ -9,13 +9,16 @@ import Events
 import Config
 import Levels
 import Board
+import Assets
 
+-- App entry
 main :: IO ()
-main =
+main = do
+  assets <- loadUIAssets
   let world =
         case builtInPuzzles of
           Left err ->
-            initialWorld
+            (initialWorld assets)
               { worldUI =
                   initialUIState
                     { uiMessage = Just ("Load error: " ++ err)
@@ -23,21 +26,22 @@ main =
               }
 
           Right puzzles ->
-            initialWorld
+            (initialWorld assets)
               { worldLevels = puzzles
               , worldRandomSeed = 1357911
               , worldUI = initialUIState
               }
-  
-   in play
-        window
-        backgroundColor
-        fps
-        world
-        renderWorld
-        handleEvent
-        updateWorld
 
+  play
+    window
+    backgroundColor
+    fps
+    world
+    renderWorld
+    handleEvent
+    updateWorld
+
+-- Window setup
 window :: Display
 window =
   InWindow
@@ -45,13 +49,15 @@ window =
     (windowWidth, windowHeight)
     (100, 80)
 
-initialWorld :: World
-initialWorld =
+-- Initial state
+initialWorld :: UIAssets -> World
+initialWorld assets =
   World
     { worldGame = initialGameState
     , worldUI = initialUIState
     , worldLevels = []
     , worldRandomSeed = 1
+    , worldAssets = assets
     }
 
 initialGameState :: GameState
@@ -66,8 +72,11 @@ initialUIState :: UIState
 initialUIState =
   UIState
     { uiScreen = MainMenu
+    , uiTheme = LightTheme
     , uiSolved = False
     , uiSelected = Nothing
+    , uiHoverCell = Nothing
+    , uiHoverButton = Nothing
     , uiShowConflicts = True
     , uiMessage = Just "Sudoku"
     , uiErrorCell = Nothing
