@@ -3,7 +3,7 @@ module Generator
   ) where
 
 import Data.Char (digitToInt)
-import Data.Maybe (isJust, isNothing)
+import Data.Maybe (isJust, isNothing, fromMaybe)
 import qualified Data.Vector as V
 import System.Random (StdGen, randomR)
 
@@ -34,10 +34,7 @@ difficultyPuzzles difficulty =
           exactMatches = filter (matchesDifficulty difficulty . lpBoard) allPuzzles
        in
         case exactMatches of
-          [] ->
-            case lookup difficulty groups of
-              Just puzzles -> puzzles
-              Nothing -> []
+          [] -> fromMaybe [] (lookup difficulty groups)
           puzzles -> puzzles
 
 matchesDifficulty :: Difficulty -> Board -> Bool
@@ -73,8 +70,7 @@ transformPuzzle digitOrder rowOrder colOrder puzzle =
     transformedValue row col =
       remapDigit digitOrder (originalPuzzleValue puzzle rowOrder colOrder row col)
 
-    originalGiven row col =
-      originalPuzzleGiven puzzle rowOrder colOrder row col
+    originalGiven = originalPuzzleGiven puzzle rowOrder colOrder
 
 cellIndex :: Int -> Int -> Int
 cellIndex row col = row * 9 + col
